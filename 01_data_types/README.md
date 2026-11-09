@@ -55,19 +55,10 @@ A testbench has two kinds of variables:
 
 ### 1. `logic` vs `bit` — "Can it say *I don't know*?"
 
-> 💡 **Analogy:** `logic` is a thermometer that can show *ERROR*. `bit` always shows a number — even when it's broken.
+In real hardware, a flip-flop holds a random value when power turns on until reset clears it. The simulator shows that “unknown” as X. Z means nobody is driving the wire (like an unplugged cable).
 
-```systemverilog
-logic l4;     // starts as X  (unknown)
-bit   b2;     // starts as 0
-l4 = 1'bz;    // stays z
-b2 = 1'bz;    // silently becomes 0 ⚠️
-```
-
-```
-logic default = x
-bit   default = 0
-logic = z -> z, bit = z -> 0
+logic can show X/Z → you see the problem
+bit turns X/Z into 0 → the problem hides
 ```
 
 ✅ **Why it matters:** if the DUT forgets to reset a signal, `logic` shows **X** in your waveform. A `bit` would show **0**, and you'd never notice the bug.
