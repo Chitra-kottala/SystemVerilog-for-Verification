@@ -1,9 +1,5 @@
 # 01 · SystemVerilog Data Types
 
-> **TL;DR** — Use `logic` for anything that touches the DUT. Use `bit`, `int`, `enum`, `struct`, `string` for variables that live only inside the testbench.
-
----
-
 ## 🧭 Big picture
 
 A testbench has two kinds of variables:
@@ -38,151 +34,158 @@ A testbench has two kinds of variables:
 
 ---
 
-## 📋 Cheat sheet
-
-| Type | Values | Starts as |
-|---|---|:---:|
-| `logic` | 0, 1, X, Z | X |
-| `bit` | 0, 1 | 0 |
-| `byte` | 8-bit number (can be negative) | 0 |
-| `int` | 32-bit number (can be negative) | 0 |
-
-> **Remember:** only `logic` can show X and Z.
-
----
-
 ## 🔍 Each type explained
 
-### 1. `logic` vs `bit` — "Can it say *I don't know*?"
+### 1. `logic` — "Can it say *I don't know*?"
 
-In real hardware, a flip-flop holds a random value when power turns on until reset clears it. The simulator shows that “unknown” as X. Z means nobody is driving the wire (like an unplugged cable).
+In real hardware, a flip-flop holds a random value when power turns on, until reset clears it. The simulator shows that "unknown" value as **X**. **Z** means nobody is driving the wire, like an unplugged cable.
 
-logic can show X/Z → you see the problem
-bit turns X/Z into 0 → the problem hides
+`logic` is a **4-state** type: it can hold 0, 1, X and Z. It starts as X. So if the design forgets to reset a signal, you will see X in your waveform and catch the bug.
+
+```systemverilog
+logic a;
+$display("a = %b", a);   // a = x
+a = 1'bz;
+$display("a = %b", a);   // a = z
 ```
 
-✅ **Why it matters:** if the DUT forgets to reset a signal, `logic` shows **X** in your waveform. A `bit` would show **0**, and you'd never notice the bug.
+👉 Use `logic` for every signal connected to the DUT.
 
 ---
 
-### 2. Signed vs unsigned — "Same bits, different meaning"
+### 2. `bit` — "Always 0 or 1, even when it's wrong"
+
+`bit` is a **2-state** type: it can only hold 0 or 1. It starts as 0. If you put X or Z into a `bit`, it silently becomes 0 — no error, no warning.
+
+That makes it faster for the simulator, but it can hide bugs. If the DUT sends X and your variable is a `bit`, you'll see 0 and think everything is fine.
 
 ```systemverilog
-byte      sb = 8'hFF;   // signed   → -1
-bit [7:0] ub = 8'hFF;   // unsigned → 255
+bit b;
+$display("b = %b", b);   // b = 0
+b = 1'bz;
+$display("b = %b", b);   // b = 0  (Z was lost)
 ```
 
-```
-byte 8'hFF  = -1
-bit[7:0] FF = 255
+👉 Use `bit` only for variables that live inside the testbench, like flags.
+
+---
+
+### 3. Signed vs unsigned — "Same bits, different meaning"
+
+A variable is just a row of bits. The type decides how those bits are read as a number.
+
+- **Unsigned** reads all bits as positive. 8 bits → 0 to 255.
+- **Signed** lets the number be negative. 8 bits → −128 to 127.
+
+For an 8-bit signed variable, anything above 127 is read as **value − 256**. So 255 becomes −1, and 200 becomes −56.
+
+```systemverilog
+byte      s = 200;   // signed   → -56
+bit [7:0] u = 200;   // unsigned → 200
 ```
 
-| Bits `1111_1111` | Read as |
+| Bits `1100_1000` | Read as |
 |---|---|
-| unsigned (`bit [7:0]`) | 255 |
-| signed (`byte`) | -1 |
+| unsigned (`bit [7:0]`) | 200 |
+| signed (`byte`) | −56 |
 
-✅ **Signed** (`byte`, `int`) → counters, math
-✅ **Unsigned** (`bit [N:0]`, `logic [N:0]`) → addresses, data buses
+👉 Use unsigned for addresses and data buses. Use signed for counters and math.
 
 ---
 
-### 3. `enum` — "Names instead of numbers"
+### 4. `byte` and `int` — "Ready-made signed numbers"
+
+`byte` is an 8-bit signed number. `int` is a 32-bit signed number. Both are 2-state and start at 0.
+
+`int` is the one you'll use most — for loop counters, number of transactions, error counts. Don't confuse it with `integer`: same size, but `integer` is 4-state and starts as X.
 
 ```systemverilog
-typedef enum {IDLE, BUSY, DONE} state_t;   // IDLE=0, BUSY=1, DONE=2
-state_t state = BUSY;
-$display("state = %s (value %0d)", state.name(), state);
+int count = 10;
+for (int i = 0; i < count; i++) ...
 ```
 
-```
-state = BUSY (value 1)
-```
-
-✅ Logs and waveforms show **`BUSY`** instead of **`1`** → much faster debugging of FSMs
+👉 Use `int` for counting things in the testbench.
 
 ---
 
-### 4. `struct` — "One form with many fields"
+### 5. `enum` — "Names instead of numbers"
 
-> 💡 **Analogy:** like a shipping label — address and contents travel together.
+An FSM has states like IDLE, BUSY, DONE. Inside hardware they are just numbers (0, 1, 2). `enum` lets you give those numbers names, so your code and logs are easy to read.
+
+The first name gets 0, the next gets 1, and so on. `.name()` prints the name instead of the number.
+
+```systemverilog
+typedef enum {IDLE, BUSY, DONE} state_t;
+state_t s = BUSY;
+$display("s = %s, value = %0d", s.name(), s);   // s = BUSY, value = 1
+```
+
+👉 Use `enum` for FSM states and opcodes. Logs show `BUSY` instead of `1`.
+
+---
+
+### 6. `struct` — "One form with many fields"
+
+A transaction on a bus has several parts, like an address and data. Instead of keeping two separate variables, a `struct` groups them into one, like a shipping label that keeps address and contents together.
+
+`packed` means the fields are stored side by side as one long vector. So addr = AB and data = CD together become ABCD.
 
 ```systemverilog
 typedef struct packed {
-  logic [7:0]  addr;
-  logic [31:0] data;
-} packet_t;
+  bit [7:0] addr;
+  bit [7:0] data;
+} pkt_t;
 
-packet_t pkt;
-pkt.addr = 8'h10;
-pkt.data = 32'hDEAD_BEEF;
+pkt_t p;
+p.addr = 8'hAB;
+p.data = 8'hCD;
+$display("p = %h", p);   // p = abcd
 ```
 
-```
-addr = 10, data = deadbeef
-```
-
-✅ Describes **one transaction**. In UVM, this idea grows into a **sequence item class**.
-📝 `packed` = fields stored back-to-back as one 40-bit vector, so it can be sent on a bus.
+👉 Use `struct` to describe one transaction. In UVM, this idea becomes a sequence item class.
 
 ---
 
-### 5. `string` — "Text for humans"
+### 7. `string` — "Text for humans"
+
+`string` stores text, like messages and test names. Its size grows automatically as you add text, and it has built-in functions like `.len()`.
 
 ```systemverilog
 string msg = "Hello DV";
-msg.len();   // 8
+$display("%s, length = %0d", msg, msg.len());   // Hello DV, length = 8
 ```
 
-✅ Used for **log messages, test names, error reports**
+👉 Use `string` for log messages, test names and error reports.
 
 ---
 
-## ⚠️ Common mistakes
+## 📋 Quick revision
 
-| ❌ Mistake | 💥 What happens | ✅ Fix |
-|---|---|---|
-| Using `bit` for DUT outputs | X becomes 0 → bug hidden | Use `logic` |
-| Putting `8'hFF` in a `byte`, expecting 255 | You get -1 | Use `bit [7:0]` |
-| Printing an enum with `%d` | Shows `1`, not `BUSY` | Use `.name()` with `%s` |
-| Assuming `int` and `integer` are the same | `integer` is 4-state, starts as X | Use `int` in TB code |
+| Type | States | Signed | Size | Starts as |
+|---|:---:|:---:|:---:|:---:|
+| logic | 4 | No | any | X |
+| bit | 2 | No | any | 0 |
+| byte | 2 | Yes | 8 | 0 |
+| int | 2 | Yes | 32 | 0 |
+| integer | 4 | Yes | 32 | X |
 
 ---
 
 ## 🎯 Interview questions
 
-<details>
-<summary><b>Q1. What is the difference between <code>logic</code> and <code>bit</code>?</b></summary>
+**Q: logic vs bit?**
+logic is 4-state (starts X), bit is 2-state (starts 0). Use logic for DUT signals so X/Z bugs are visible.
 
-`logic` is 4-state (0, 1, X, Z) and starts as X. `bit` is 2-state (0, 1) and starts as 0. Use `logic` for DUT signals so X/Z problems are visible; use `bit` in the TB for speed.
-</details>
+**Q: int vs integer?**
+Both 32-bit signed. int is 2-state, integer is 4-state.
 
-<details>
-<summary><b>Q2. What is the difference between <code>int</code> and <code>integer</code>?</b></summary>
+**Q: What happens when X is assigned to a bit?**
+It becomes 0, with no warning.
 
-Both are 32-bit signed. `int` is 2-state (default 0); `integer` is 4-state (default X).
-</details>
+**Q: What is a packed struct?**
+Fields stored side by side as one vector.
 
-<details>
-<summary><b>Q3. What happens when you assign X or Z to a <code>bit</code>?</b></summary>
-
-It is converted to 0 — no warning. This can hide bugs.
-</details>
-
-<details>
-<summary><b>Q4. Packed vs unpacked struct?</b></summary>
-
-Packed: all fields stored as one continuous vector — can be assigned, sliced, or sent on a bus like a normal signal. Unpacked: fields stored separately; can't be treated as one vector.
-</details>
-
-<details>
-<summary><b>Q5. What is the default base type of an <code>enum</code>?</b></summary>
-
-`int` (32-bit, 2-state). The first name gets 0, the next 1, and so on, unless you assign values.
-</details>
+**Q: Default value of an enum variable?**
+The first name in the list (value 0).
 
 ---
-
----
-
-**Next →** [02 · Arrays & Queues](../02_arrays_queues)
