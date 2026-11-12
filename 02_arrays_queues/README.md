@@ -2,14 +2,27 @@
 
 ## 🧭 Big picture
 
-**Ask one question: how many items, and how do I add or remove them?**
+A testbench stores lots of data: expected values, transactions, memory contents. The right container depends on one question:
 
-| If... | Use |
+**"How many items, and how will I add or remove them?"**
+
+```
+ Size known while writing code?  ──► Fixed array        int a[4];
+ Size known only while running?  ──► Dynamic array      int d[];
+ Huge range, only few used?      ──► Associative array  int m[int];
+ Add/remove at ends (FIFO)?      ──► Queue              int q[$];
+```
+
+---
+
+## 🤔 Which one should I use?
+
+| If you need... | Use |
 |---|---|
-| Size never changes | Fixed array |
-| Size decided while test runs | Dynamic array |
-| Huge range, only a few used | Associative array |
-| Add/remove at the ends, in order | Queue |
+| A fixed number of items (e.g., 4 registers) | Fixed array |
+| A size decided at run time (e.g., random packet length) | Dynamic array |
+| A memory model with a huge address range | Associative array |
+| A FIFO of expected transactions (scoreboard) | Queue |
 
 ---
 
