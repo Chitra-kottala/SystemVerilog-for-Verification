@@ -25,6 +25,7 @@
 | Testbench steps | `initial` | once, at time 0 |
 | Gates (no clock) | `always_comb` | every time an input changes |
 | Flip-flops (with clock) | `always_ff` | on every clock edge |
+| Latches (with enable) | `always_latch` | while enable is 1 |
 
 ---
 
@@ -35,7 +36,7 @@
 | Block | Job |
 |---|---|
 | `always #5 clk = ~clk;` | **Clock maker** — flips the clock every 5 time units, forever |
-| `always_comb` / `always_ff` | **Hardware** — produces the output |
+| `always_comb` / `always_ff` / `always_latch` | **Hardware** — produces the output |
 | `initial` | **Tester** — changes the inputs, prints the output |
 
 **Remember:** `initial` changes the inputs. `always` blocks produce the outputs.
@@ -93,7 +94,44 @@ always_ff @(posedge clk) q <= d;
 
 ---
 
-## 4. Blocking `=` vs Non-blocking `<=`
+## 4. always_latch
+
+**Think of it as:** A door. Open while `en` = 1, locked when `en` = 0.
+
+**Definition:** Describes a latch. When `en` = 1, `lq` follows `ld`. When `en` = 0, `lq` holds its last value. No clock edge.
+
+```systemverilog
+always_latch if (en) lq <= ld;
+```
+
+**Output:** `en=1 → lq follows ld`, `en=0 → lq holds`
+
+**Remember:** No `else` here on purpose. When `en` = 0, nothing assigns `lq`, so it **remembers**. Hardware that remembers = latch.
+
+---
+
+### ⚠️ Accidental latch: forgetting `else`
+
+A gate (`always_comb`) must **never remember**. Its output must be assigned in **every** case.
+
+If you forget `else`, there's a case where the output is not assigned. The tool has to remember the old value, so it builds a **latch you didn't want**.
+
+```systemverilog
+// ❌ Forgot else → when sel = 0, y is not assigned → accidental latch
+always_comb
+  if (sel) y = a;
+
+// ✅ With else → y assigned in every case → pure gate (mux)
+always_comb
+  if (sel) y = a;
+  else     y = b;
+```
+
+**Remember:** In `always_comb`, every `if` needs an `else`, and every `case` needs a `default`. Otherwise you get a latch.
+
+---
+
+## 5. Blocking `=` vs Non-blocking `<=`
 
 **Think of it as:**
 - `=` → one step after another, like a recipe
@@ -111,7 +149,7 @@ y1 = 1; y2 = 2;
 y1 <= y2; y2 <= y1;    // non-blocking → y1=2, y2=1 (swap works)
 ```
 
-**Remember:** `always_comb` → `=`. `always_ff` → `<=`.
+**Remember:** `always_comb` → `=`. `always_ff` and `always_latch` → `<=`.
 
 ---
 
@@ -147,6 +185,8 @@ always_comb: a=1 b=0 y=0
 always_comb: a=1 b=1 y=1
 always_ff before clock: d=1 q=x
 always_ff after clock:  d=1 q=1
+always_latch en=1: ld=1 lq=1 (follows)
+always_latch en=0: ld=0 lq=1 (holds)
 blocking:     x1=2 x2=2
 non-blocking: y1=2 y2=1
 ```
@@ -160,6 +200,7 @@ non-blocking: y1=2 y2=1
 | `initial` | No | `=` | Testbench steps |
 | `always_comb` | No | `=` | Gates |
 | `always_ff` | Yes | `<=` | Flip-flops |
+| `always_latch` | No (enable) | `<=` | Latches |
 
 ---
 
@@ -179,6 +220,12 @@ The flip-flop hasn't been clocked or reset yet, so its value is unknown.
 
 **Q: initial vs always?**
 initial runs once. always repeats every time its trigger happens.
+
+**Q: How does an accidental latch happen?**
+In `always_comb`, an `if` without `else` (or a `case` without `default`) leaves the output unassigned in some case, so the tool builds a latch to remember it.
+
+**Q: Latch vs flip-flop?**
+A flip-flop updates only on the clock edge. A latch follows its input the whole time enable is 1.
 
 ---
 
