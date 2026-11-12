@@ -1,11 +1,12 @@
 // 03 - Procedural Blocks
-// initial, always_comb, always_ff, blocking vs non-blocking
+// initial, always_comb, always_ff, always_latch, blocking vs non-blocking
 
 module procedural_blocks_tb;
 
   logic clk = 0;
   logic a, b, y;       // for always_comb
   logic d, q;          // for always_ff
+  logic en, ld, lq;    // for always_latch
   int   x1, x2;        // for blocking
   int   y1, y2;        // for non-blocking
 
@@ -17,6 +18,9 @@ module procedural_blocks_tb;
 
   // Sequential logic: flip-flop
   always_ff @(posedge clk) q <= d;
+
+  // Latch: lq follows ld while en = 1, holds when en = 0
+  always_latch if (en) lq <= ld;
 
   initial begin
     // ---------- always_comb ----------
@@ -30,6 +34,12 @@ module procedural_blocks_tb;
     $display("always_ff before clock: d=%b q=%b", d, q);
     @(posedge clk); #1;
     $display("always_ff after clock:  d=%b q=%b", d, q);
+
+    // ---------- always_latch ----------
+    en = 1; ld = 1; #1;
+    $display("always_latch en=1: ld=%b lq=%b (follows)", ld, lq);
+    en = 0; ld = 0; #1;
+    $display("always_latch en=0: ld=%b lq=%b (holds)", ld, lq);
 
     // ---------- blocking ----------
     x1 = 1; x2 = 2;
