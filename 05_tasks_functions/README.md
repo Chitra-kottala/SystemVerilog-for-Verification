@@ -93,23 +93,18 @@ endfunction
 ## 📌 Argument directions
 
 **Definition:**
-> Arguments can be passed as `input`, `output`, `inout`, or `ref`. `input` is the default and passes a **copy**. `ref` passes a **reference to the original variable**, so changes inside the subroutine are seen by the caller immediately.
+> Arguments can be `input`, `output`, `inout`, or `ref`. `input` passes a copy. `ref` passes the original variable.
 
-| Direction | Meaning |
+| Direction | What happens to the caller's variable |
 |---|---|
-| `input` | Copied in at the start. Caller's variable is not changed. (default) |
-| `output` | Copied out to the caller when the subroutine ends |
-| `inout` | Copied in at the start and copied out at the end |
-| `ref` | Passes the original variable. Changes are visible immediately. |
-| `const ref` | Passes by reference but cannot be modified (saves copying large arrays) |
+| `input` | Not changed (default) |
+| `output` | Gets the value when the task ends |
+| `inout` | Goes in, comes back changed when the task ends |
+| `ref` | Changes immediately, while the task runs |
+| `const ref` | Passed without copying, but can't be changed |
 
 **Example**
 ```systemverilog
-task get_sum_diff(input int a, b, output int sum, diff);
-  sum  = a + b;
-  diff = a - b;
-endtask
-
 function automatic void increment(ref int x);
   x = x + 1;
 endfunction
@@ -119,9 +114,9 @@ increment(count);   // count = 6
 ```
 
 **Key points**
-- `ref` is only allowed in **automatic** subroutines
-- `ref` avoids copying, so it's faster for large arrays
-- `const ref` = pass large data efficiently without allowing changes
+- `ref` needs `automatic`
+- `inout` updates at the end, `ref` updates immediately
+- `const ref` is used to pass big arrays without copying them
 
 ---
 
