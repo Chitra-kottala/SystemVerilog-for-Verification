@@ -4,7 +4,8 @@
 
 ---
 
-<img width="1346" height="1126" alt="image" src="https://github.com/user-attachments/assets/00da8e7f-b704-4830-be51-2b9322b9ef2f" />
+<img width="1346" height="1226" alt="image" src="https://github.com/user-attachments/assets/e61f5f1a-7f90-4fc4-9f0f-33f1e50db0fa" />
+
 
 
 ## 📌 Interface
