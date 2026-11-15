@@ -4,26 +4,8 @@
 
 ---
 
-## 🧭 Where it sits
+<img width="1346" height="1126" alt="image" src="https://github.com/user-attachments/assets/00da8e7f-b704-4830-be51-2b9322b9ef2f" />
 
-```
- ┌─────────────── tb_top (module) ───────────────┐
- │                                               │
- │   UVM test → env → agent                      │
- │      Driver ──┐          ┌── Monitor ──► Scoreboard
- │               │ vif      │ vif                │
- │               ▼          │                    │
- │   ┌────────── interface bus_if ──────────┐    │
- │   │ Signals: clk, data, valid            │    │
- │   │ Clocking block cb  ← TB only         │    │
- │   │ modport DUT        ← DUT only        │    │
- │   └──────────────────┬───────────────────┘    │
- │                      ▼                        │
- │                 DUT (RTL)                     │
- └───────────────────────────────────────────────┘
-```
-
----
 
 ## 📌 Interface
 
